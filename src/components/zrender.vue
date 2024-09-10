@@ -20,92 +20,109 @@ export default {
     var w = zr.getWidth();
     var h = zr.getHeight();
 
-    // 网格大小
-    const gridSize = 50;
-
-    // 创建可拖动的矩形
-    var rect = new zrender.Rect({
+    // 创建更大的多边形
+    var polygon = new zrender.Polygon({
       shape: {
-        x: w / 2 - 25,
-        y: h / 2 - 25,
-        width: 50,
-        height: 50,
+        points: [
+          [50, 50],
+          [550, 50],
+          [750, 300],
+          [550, 550],
+          [50, 550],
+        ],
       },
       style: {
-        fill: "#FF6EBE",
+        fill: "rgba(220, 20, 60, 0.4)", // 半透明的红色
+        stroke: "#DC143C", // 深红色边框
+        lineWidth: 2,
       },
-      draggable: true,
+      z: -2, // 确保多边形在矩形和网格线下方
     });
 
-    // 创建虚线框组
-    var guideLines = new zrender.Group({
-      z: -1, // 将层级设置为负数，确保在最底层
-    });
+    // 将多边形添加到场景
+    zr.add(polygon);
 
-    // 生成网格线
-    function createGridLines() {
-      for (let x = gridSize; x < w; x += gridSize) {
-        guideLines.add(
-          new zrender.Line({
+    // 在多边形边上添加格子
+    this.addGridsOnEdges(zr, polygon.shape.points);
+
+    // 添加可拖动的点
+    this.addDraggablePoint(zr);
+  },
+  methods: {
+    addGridsOnEdges(zr, points) {
+      const gridSize = 20; // 格子大小
+      const gridColor = "rgba(0, 0, 255, 0.5)"; // 格子颜色
+
+      for (let i = 0; i < points.length; i++) {
+        const start = points[i];
+        const end = points[(i + 1) % points.length];
+
+        const dx = end[0] - start[0];
+        const dy = end[1] - start[1];
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const numGrids = Math.floor(distance / gridSize);
+
+        for (let j = 0; j < numGrids; j++) {
+          const t = j / numGrids;
+          const x = start[0] + dx * t;
+          const y = start[1] + dy * t;
+
+          const grid = new zrender.Rect({
             shape: {
-              x1: x,
-              y1: 0,
-              x2: x,
-              y2: h,
+              x: x - gridSize / 2,
+              y: y - gridSize / 2,
+              width: gridSize,
+              height: gridSize,
             },
             style: {
-              stroke: "#5ACFFF",
-              lineDash: [5, 5],
-              opacity: 0.5, // 降低不透明度，使线条看起来更淡
+              fill: gridColor,
+              stroke: "blue",
             },
-          })
-        );
+            z: -1, // 确保格子在多边形上方
+          });
+
+          zr.add(grid);
+        }
       }
-      for (let y = gridSize; y < h; y += gridSize) {
-        guideLines.add(
-          new zrender.Line({
-            shape: {
-              x1: 0,
-              y1: y,
-              x2: w,
-              y2: y,
-            },
-            style: {
-              stroke: "#5ACFFF",
-              lineDash: [5, 5],
-              opacity: 0.5, // 降低不透明度，使线条看起来更淡
-            },
-          })
-        );
-      }
-    }
+    },
+    addDraggablePoint(zr) {
+      const point = new zrender.Circle({
+        shape: {
+          cx: 300,
+          cy: 300,
+          r: 10,
+        },
+        style: {
+          fill: "red",
+          cursor: "move",
+        },
+        draggable: true,
+        z: 2, // 确保点在其他元素上方
+      });
 
-    createGridLines();
-    guideLines.hide();
+      point.on("mouseover", function () {
+        this.attr({
+          style: {
+            fill: "blue",
+          },
+        });
+      });
 
-    // 添加元素到场景
-    zr.add(rect);
-    zr.add(guideLines);
+      point.on("mouseout", function () {
+        this.attr({
+          style: {
+            fill: "red",
+          },
+        });
+      });
 
-    // 拖动事件
-    rect.on("dragstart", function () {
-      guideLines.show();
-      // zr.refresh(); // 刷新渲染
-    });
+      point.on("drag", function () {
+        // 可以在这里添加拖动时的逻辑
+        console.log("正在拖动点", this.shape.cx, this.shape.cy);
+      });
 
-    rect.on("drag", function () {
-      var pos = rect.position;
-      // var newX = Math.round(pos[0] / gridSize) * gridSize;
-      // var newY = Math.round(pos[1] / gridSize) * gridSize;
-      // rect.attr({
-      //   position: [newX, newY],
-      // });
-    });
-
-    rect.on("dragend", function () {
-      guideLines.hide();
-      // zr.refresh(); // 刷新渲染
-    });
+      zr.add(point);
+    },
   },
 };
 </script>
