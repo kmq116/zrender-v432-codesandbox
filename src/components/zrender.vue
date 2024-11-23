@@ -5,7 +5,7 @@
       <p>ZRender坐标: ({{ zrX }}, {{ zrY }})</p>
     </div>
     <div
-      style="width: 100vw; height: 100vh; border: 1px solid #000"
+      style="width: 50vw; height: 50vh; border: 1px solid #fff"
       class="example-container"
     ></div>
   </div>
@@ -394,7 +394,10 @@ export default {
           containerSize
         )
       );
-
+      console.log({ screenPoints });
+      // const screenPoints_ = screenPoints.map((item) => {
+      //   return [item[0], -item[1] + containerSize.height];
+      // });
       // 创建 zrender 多边形
       const zrPolygon = new zrender.Polygon({
         shape: {
