@@ -1,16 +1,18 @@
 <template>
   <div id="app">
-    <ZrenderComponent />
+    <!-- <ZrenderComponent /> -->
+    <Example />
   </div>
 </template>
 
 <script>
 import ZrenderComponent from "./components/zrender";
-
+import Example from "./components/Example";
 export default {
   name: "App",
   components: {
     ZrenderComponent,
+    Example,
   },
 };
 </script>
