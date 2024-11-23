@@ -7,43 +7,10 @@
 
 <script>
 import zrender from "zrender";
+import * as turf from "@turf/turf";
+import { CoordinateUtils } from "../utils/coordinateUtils";
+import { GeometryUtils } from "../utils/geometryUtils";
 
-function calculateAngleBetweenLines(x1, y1, x2, y2, x3, y3, x4, y4) {
-  // 计算第一条线的方向向量
-  const vector1 = {
-    x: x2 - x1,
-    y: y2 - y1,
-  };
-
-  // 计算第二条线的方向向量
-  const vector2 = {
-    x: x4 - x3,
-    y: y4 - y3,
-  };
-
-  // 计算两个向量的点积
-  const dotProduct = vector1.x * vector2.x + vector1.y * vector2.y;
-
-  // 计算两个向量的模
-  const magnitude1 = Math.sqrt(vector1.x * vector1.x + vector1.y * vector1.y);
-  const magnitude2 = Math.sqrt(vector2.x * vector2.x + vector2.y * vector2.y);
-
-  // 计算夹角的余弦值
-  const cosTheta = dotProduct / (magnitude1 * magnitude2);
-
-  // 使用反余弦函数计算夹角（弧度）
-  let angle = Math.acos(cosTheta);
-
-  // 计算叉积来确定旋转方向
-  const crossProduct = vector1.y * vector2.x - vector1.x * vector2.y;
-
-  // 如果叉积为负，说明是顺时针旋转，角度应该大于 π
-  if (crossProduct < 0) {
-    angle = 2 * Math.PI - angle;
-  }
-
-  return angle; // 直接返回 0-2π 之间的弧度
-}
 let sector1 = null;
 
 let initialAngle = 0;
@@ -69,43 +36,17 @@ export default {
     var w = zr.getWidth();
     var h = zr.getHeight();
 
-    // 创建更大的多边形
-    var polygon = new zrender.Polygon({
-      shape: {
-        points: [
-          [50, 50],
-          [550, 50],
-          [750, 300],
-          [550, 550],
-          [50, 550],
-        ],
-      },
-      style: {
-        fill: "rgba(220, 20, 60, 0.4)", // 半透明的红色
-        stroke: "#DC143C", // 深红色边框
-        lineWidth: 2,
-      },
-      draggable: true,
-      z: -2, // 确保多边形在矩形和网格线下方
-    });
-    // 添加拖动事件监听器
-    polygon.on("drag", (e) => {
-      const x = Math.round(e.offsetX);
-      const y = Math.round(e.offsetY);
-      console.log(`多边形当前位置: (${x}, ${y})`);
-      console.log(e);
-    });
-    // 将多边形添加到场景
-    zr.add(polygon);
+    // 创建地理边界多边形
+    const polygon = this.createGeoPolygon(zr);
 
     // 在多边形边上添加格子
-    this.addGridsOnEdges(zr, polygon.shape.points);
+    // this.addGridsOnEdges(zr, polygon.shape.points);
 
     // 添加可拖动的点
-    this.addDraggablePoint(zr);
+    // this.addDraggablePoint(zr);
 
     // 添加扇形
-    this.addSector(zr);
+    // this.addSector(zr);
 
     // 创建两条线段
     this.line1 = new zrender.Line({
@@ -138,8 +79,8 @@ export default {
       z: 3,
     });
 
-    zr.add(this.line1);
-    zr.add(this.line2);
+    // zr.add(this.line1);
+    // zr.add(this.line2);
 
     zr.on("mousemove", (e) => {
       if (this.isDragging) {
@@ -168,7 +109,7 @@ export default {
           style: { opacity: 1 },
         });
 
-        const angle = calculateAngleBetweenLines(
+        const angle = GeometryUtils.calculateAngleBetweenLines(
           cx,
           cy,
           e.offsetX,
@@ -346,7 +287,7 @@ export default {
         //   },
         // });
       });
-      // 记录完坐标后，鼠标移动时，计算新的位置,跟初始坐标去对比相对起始点的角度
+      // 记录完坐标后，鼠标移动时，计算新的位置,跟初始坐标去对比相对起始点的角
 
       // sector1.on("mouseup", (e) => {
       //   this.isDragging = false;
@@ -381,6 +322,96 @@ export default {
       });
 
       zr.add(sector1);
+    },
+    createGeoPolygon(zr) {
+      // 经纬度坐标点数组 (WGS84)
+      const geoPoints = [
+        [113.62015139, 23.59085388],
+        [113.6200707, 23.59064904],
+        [113.62010765, 23.59063705],
+        [113.62018834, 23.59084164],
+        [113.62015139, 23.59085388],
+      ];
+
+      // 使用 turf.js 创建多边形并转换为墨卡托投影
+      const polygon = turf.polygon([geoPoints]);
+      const mercatorPolygon = turf.toMercator(polygon);
+      const mercatorPoints = mercatorPolygon.geometry.coordinates[0];
+
+      // 计算墨卡托坐标的边界
+      const bounds = {
+        minX: Math.min(...mercatorPoints.map((p) => p[0])),
+        maxX: Math.max(...mercatorPoints.map((p) => p[0])),
+        minY: Math.min(...mercatorPoints.map((p) => p[1])),
+        maxY: Math.max(...mercatorPoints.map((p) => p[1])),
+      };
+
+      // 扩大边界范围
+      const padding = 0.1;
+      const rangeX = bounds.maxX - bounds.minX;
+      const rangeY = bounds.maxY - bounds.minY;
+      bounds.minX -= rangeX * padding;
+      bounds.maxX += rangeX * padding;
+      bounds.minY -= rangeY * padding;
+      bounds.maxY += rangeY * padding;
+      console.log(bounds);
+
+      // 容器尺寸
+      const containerSize = {
+        width: zr.getWidth(),
+        height: zr.getHeight(),
+      };
+      console.log(containerSize);
+
+      // 使用工具类的方法
+      const screenPoints = mercatorPoints.map((point) =>
+        CoordinateUtils.mercatorToScreen(
+          point[0],
+          point[1],
+          bounds,
+          containerSize
+        )
+      );
+
+      // 创建 zrender 多边形
+      const zrPolygon = new zrender.Polygon({
+        shape: {
+          points: screenPoints,
+        },
+        style: {
+          fill: "rgba(220, 20, 60, 0.4)",
+          stroke: "#DC143C",
+          lineWidth: 2,
+        },
+        draggable: true,
+        z: -2,
+      });
+
+      // 添加拖动事件监听器
+      zrPolygon.on("drag", (e) => {
+        const x = Math.round(e.offsetX);
+        const y = Math.round(e.offsetY);
+
+        // 从屏幕坐标转回墨卡托坐标
+        const mercatorX =
+          (x / containerSize.width) * (bounds.maxX - bounds.minX) + bounds.minX;
+        const mercatorY =
+          ((containerSize.height - y) / containerSize.height) *
+            (bounds.maxY - bounds.minY) +
+          bounds.minY;
+
+        // 使用工具类的方法
+        const [lng, lat] = CoordinateUtils.mercatorToWgs84(
+          mercatorX,
+          mercatorY
+        );
+
+        console.log(`屏幕坐标: (${x}, ${y})`);
+        console.log(`经纬度: (${lng.toFixed(6)}, ${lat.toFixed(6)})`);
+      });
+
+      zr.add(zrPolygon);
+      return zrPolygon;
     },
   },
 };
