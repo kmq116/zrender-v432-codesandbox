@@ -1,8 +1,14 @@
 <template>
-  <div
-    style="width: 100vw; height: 100vh; border: 1px solid #000"
-    class="example-container"
-  ></div>
+  <div>
+    <div class="coordinates-display">
+      <p>屏幕坐标: ({{ screenX }}, {{ screenY }})</p>
+      <p>ZRender坐标: ({{ zrX }}, {{ zrY }})</p>
+    </div>
+    <div
+      style="width: 100vw; height: 100vh; border: 1px solid #000"
+      class="example-container"
+    ></div>
+  </div>
 </template>
 
 <script>
@@ -24,6 +30,10 @@ export default {
       shape: null,
       line1: null,
       line2: null,
+      screenX: 0,
+      screenY: 0,
+      zrX: 0,
+      zrY: 0,
     };
   },
   props: {
@@ -83,6 +93,15 @@ export default {
     // zr.add(this.line2);
 
     zr.on("mousemove", (e) => {
+      // 更新屏幕坐标
+      this.screenX = e.offsetX;
+      this.screenY = e.offsetY;
+
+      // 更新 ZRender 坐标（相对于容器左上角）
+      const rect = container.getBoundingClientRect();
+      this.zrX = e.offsetX - rect.left;
+      this.zrY = e.offsetY - rect.top;
+
       if (this.isDragging) {
         const cx = sector1.shape.cx;
         const cy = sector1.shape.cy;
@@ -337,6 +356,7 @@ export default {
       const polygon = turf.polygon([geoPoints]);
       const mercatorPolygon = turf.toMercator(polygon);
       const mercatorPoints = mercatorPolygon.geometry.coordinates[0];
+      console.log(mercatorPoints);
 
       // 计算墨卡托坐标的边界
       const bounds = {
@@ -345,23 +365,25 @@ export default {
         minY: Math.min(...mercatorPoints.map((p) => p[1])),
         maxY: Math.max(...mercatorPoints.map((p) => p[1])),
       };
+      console.log({ bounds });
 
       // 扩大边界范围
-      const padding = 0.1;
+      // const padding = 0.1;
       const rangeX = bounds.maxX - bounds.minX;
       const rangeY = bounds.maxY - bounds.minY;
-      bounds.minX -= rangeX * padding;
-      bounds.maxX += rangeX * padding;
-      bounds.minY -= rangeY * padding;
-      bounds.maxY += rangeY * padding;
-      console.log(bounds);
+      console.log({ rangeX, rangeY });
 
-      // 容器尺寸
+      // bounds.minX -= rangeX * padding;
+      // bounds.maxX += rangeX * padding;
+      // bounds.minY -= rangeY * padding;
+      // bounds.maxY += rangeY * padding;
+
+      // 容器��寸
       const containerSize = {
         width: zr.getWidth(),
         height: zr.getHeight(),
       };
-      console.log(containerSize);
+      console.log({ containerSize });
 
       // 使用工具类的方法
       const screenPoints = mercatorPoints.map((point) =>
@@ -392,12 +414,11 @@ export default {
         const x = Math.round(e.offsetX);
         const y = Math.round(e.offsetY);
 
-        // 从屏幕坐标转回墨卡托坐标
+        // 修改 Y 坐标的计算方式
         const mercatorX =
           (x / containerSize.width) * (bounds.maxX - bounds.minX) + bounds.minX;
         const mercatorY =
-          ((containerSize.height - y) / containerSize.height) *
-            (bounds.maxY - bounds.minY) +
+          (y / containerSize.height) * (bounds.maxY - bounds.minY) +
           bounds.minY;
 
         // 使用工具类的方法
@@ -432,5 +453,20 @@ li {
 }
 a {
   color: #42b983;
+}
+.coordinates-display {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 10px;
+  border-radius: 4px;
+  font-family: monospace;
+  z-index: 1000;
+}
+
+.coordinates-display p {
+  margin: 5px 0;
 }
 </style>
