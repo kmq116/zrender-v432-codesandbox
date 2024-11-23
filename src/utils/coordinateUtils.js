@@ -37,13 +37,17 @@ export class CoordinateUtils {
    * @returns {number[]} 屏幕坐标 [x, y]
    */
   static mercatorToScreen(mercatorX, mercatorY, bounds, containerSize) {
-    const x =
-      ((mercatorX - bounds.minX) / (bounds.maxX - bounds.minX)) *
-      containerSize.width;
-    const y =
-      containerSize.height -
-      ((mercatorY - bounds.minY) / (bounds.maxY - bounds.minY)) *
-        containerSize.height;
+    // 计算 x 和 y 方向的缩放比例
+    const scaleX = containerSize.width / (bounds.maxX - bounds.minX);
+    const scaleY = containerSize.height / (bounds.maxY - bounds.minY);
+
+    // 使用较小的缩放比例来保持等比例
+    const scale = Math.min(scaleX, scaleY);
+
+    // x 轴从左边开始，y 轴从底部开始
+    const x = (mercatorX - bounds.minX) * scale;
+    const y = containerSize.height - (mercatorY - bounds.minY) * scale;
+
     return [x, y];
   }
 }
