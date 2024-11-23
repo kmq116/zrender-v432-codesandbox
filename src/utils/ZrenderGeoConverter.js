@@ -2,7 +2,7 @@ import * as turf from "@turf/turf";
 
 /**
  * Zrender地理坐标转换工具
- * 用于将WGS84地理坐标转换为Zrender屏幕坐标
+ * 用于将WGS84地理坐标转换为Zrender屏幕坐标，或反向转换
  */
 export class ZrenderGeoConverter {
   /**
@@ -82,5 +82,39 @@ export class ZrenderGeoConverter {
       this.containerSize.height - (mercatorY - this.bounds.minY) * scale;
 
     return [x, y];
+  }
+
+  /**
+   * 将屏幕坐标转换为WGS84经纬度坐标
+   * @param {number} x - 屏幕x坐标
+   * @param {number} y - 屏幕y坐标
+   * @returns {Array<number>} [lng, lat] WGS84经纬度坐标
+   */
+  toWgs84Coord(x, y) {
+    // 计算缩放比例
+    const scaleX =
+      this.containerSize.width / (this.bounds.maxX - this.bounds.minX);
+    const scaleY =
+      this.containerSize.height / (this.bounds.maxY - this.bounds.minY);
+    const scale = Math.min(scaleX, scaleY);
+
+    // 从屏幕坐标转回墨卡托坐标
+    const mercatorX = x / scale + this.bounds.minX;
+    const mercatorY =
+      (this.containerSize.height - y) / scale + this.bounds.minY;
+
+    // 从墨卡托坐标转回WGS84
+    const point = turf.point([mercatorX, mercatorY]);
+    const wgs84Point = turf.toWgs84(point);
+    return wgs84Point.geometry.coordinates;
+  }
+
+  /**
+   * 将Zrender事件对象中的坐标转换为WGS84经纬度坐标
+   * @param {Object} e - Zrender事件对象
+   * @returns {Array<number>} [lng, lat] WGS84经纬度坐标
+   */
+  eventToWgs84Coord(e) {
+    return this.toWgs84Coord(e.offsetX, e.offsetY);
   }
 }
