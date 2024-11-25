@@ -13,7 +13,8 @@
 
 <script>
 import zrender from "zrender";
-import { ZrenderGeoConverter } from "../utils/ZrenderGeoConverter";
+import { ZrenderGeoConverter } from "zrender-geo-converter";
+console.log(ZrenderGeoConverter);
 
 export default {
   data() {
